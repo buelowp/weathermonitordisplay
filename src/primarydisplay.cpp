@@ -57,7 +57,8 @@ PrimaryDisplay::PrimaryDisplay(QFrame *parent) : QFrame(parent)
     m_mqttClient = new QMQTT::Client("mqttserver.home", 1883, false, false);
     m_mqttClient->setClientId(QHostInfo::localHostName());
     m_mqttClient->connectToHost();
-    qDebug() << __FUNCTION__ << ": Connecting";
+    m_mqttClient->setAutoReconnect(true);
+    m_mqttClient->setAutoReconnectInterval(10000);
     
     connect(m_mqttClient, SIGNAL(connected()), this, SLOT(connected()));
     connect(m_mqttClient, SIGNAL(disconnected()), this, SLOT(disconnected()));
@@ -83,18 +84,24 @@ PrimaryDisplay::~PrimaryDisplay()
 {
 }
 
-//{"photon":{"id":"440018001151373331333230","version":"1.4.4","appid":60},"reset":{"reason":140},"time":{"timezone":-5,"now":1585579142},"network":{"ssid":"Office"},"device":{"AS3935":{}}}
+//{"photon":{"id":"440018001151373331333230","version":"1.4.4","appid":62},"reset":{"reason":40},"time":{"timezone":-5,"now":1585585745},"network":{"ssid":"Office"},"device":{"AS3935":{}}}
 void PrimaryDisplay::displayStartup(QByteArray payload)
 {
+    QMQTT::Message msg;
     QJsonDocument doc = QJsonDocument::fromJson(payload);
     if (doc.isObject()) {
         QJsonObject parent = doc.object();
         QJsonObject network = parent["network"].toObject();
         QJsonObject photon = parent["photon"].toObject();
         
+        qDebug() << "ssid" << network["ssid"].toString();
+        qDebug() << "appid" << photon["appid"].toInt();
         m_ssid->setText(QString("SSID: ") + network["ssid"].toString());
         m_appid->setText(QString("Version: %1.%2").arg(photon["version"].toString()).arg(photon["appid"].toInt()));
     }
+    
+    msg.setTopic("weather/request/tunables");
+    m_mqttClient->publish(msg);
 }
 
 //{"device":{"AS3935":{"disturbers":"MASKED","indoor":"TRUE","noisefloor":2,"watchdog":2,"spikereject":8,"threshold":5}},"time":{"timezone":-5,"now":1585579482},"network":{"ssid":"Office"},"photon":{"id":"440018001151373331333230","version":"1.4.4","appid":60}}
@@ -184,7 +191,8 @@ void PrimaryDisplay::connected()
     
     msg.setTopic("weather/request/tunables");
     
-    m_mqttClient->subscribe("weather/#");
+    m_mqttClient->subscribe("weather/event/#");
+    m_mqttClient->subscribe("weather/conditions");
     m_mqttClient->publish(msg);
 }
 
@@ -218,11 +226,11 @@ void PrimaryDisplay::received(const QMQTT::Message& message)
     else if (message.topic() == "weather/event/noisefloor") {
         dislplayNoisefloorEvent(message.payload());
     }
-    else if (message.topic() == "weather/device") {
+    else if (message.topic() == "weather/event/tunables") {
         displayTunables(message.payload());
     }
     else if (message.topic() == "weather/event/startup") {
-        qDebug() << message.payload();
+        displayStartup(message.payload());
     }
     else {
         qDebug() << __FUNCTION__ << ": Got a message on topic" << message.topic();
