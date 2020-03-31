@@ -1,4 +1,5 @@
-TARGET = app
+TEMPLATE = app
+TARGET = weatherdisplay
 CONFIG += gui debug core
 QT += network widgets qmqtt
 OBJECTS_DIR = .obj

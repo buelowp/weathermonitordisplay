@@ -37,6 +37,9 @@ public:
     PrimaryDisplay(QFrame *parent = 0);
     ~PrimaryDisplay();
 
+protected:
+    void showEvent(QShowEvent*);
+
 public slots:
     void connected();
     void disconnected();

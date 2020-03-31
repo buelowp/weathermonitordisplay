@@ -42,15 +42,15 @@ PrimaryDisplay::PrimaryDisplay(QFrame *parent) : QFrame(parent)
     QLabel *hlabel = new QLabel("Humidity");
     
     m_layout = new QGridLayout();
-    m_layout->addWidget(tlabel, 0, 0, 1, 2, Qt::AlignCenter);
-    m_layout->addWidget(hlabel, 0, 2, 1, 2, Qt::AlignCenter);
-    m_layout->addWidget(m_temp, 1, 0, 2, 2, Qt::AlignCenter);
-    m_layout->addWidget(m_humidity, 1, 2, 2, 2, Qt::AlignCenter);
-    m_layout->addWidget(m_lightning, 3, 0, 1, 4, Qt::AlignCenter);
+    m_layout->addWidget(tlabel, 0, 0, Qt::AlignCenter);
+    m_layout->addWidget(hlabel, 0, 1, Qt::AlignCenter);
+    m_layout->addWidget(m_temp, 1, 0, 2, 1, Qt::AlignCenter);
+    m_layout->addWidget(m_humidity, 1, 1, 2, 1, Qt::AlignCenter);
+    m_layout->addWidget(m_lightning, 3, 0, 1, 2, Qt::AlignCenter);
     m_layout->addWidget(m_noise, 4, 0, Qt::AlignCenter);
     m_layout->addWidget(m_threshold, 4, 1, Qt::AlignCenter);
-    m_layout->addWidget(m_ssid, 4, 2, Qt::AlignCenter);
-    m_layout->addWidget(m_appid, 4, 3, Qt::AlignCenter);
+    m_layout->addWidget(m_ssid, 5, 0, Qt::AlignCenter);
+    m_layout->addWidget(m_appid, 5, 1, Qt::AlignCenter);
     
     setLayout(m_layout);
     
@@ -75,13 +75,23 @@ PrimaryDisplay::PrimaryDisplay(QFrame *parent) : QFrame(parent)
     f.setPixelSize(20);
     tlabel->setFont(f);
     hlabel->setFont(f);
-    f.setPixelSize(100);
+    m_noise->setFont(f);
+    m_threshold->setFont(f);
+    m_ssid->setFont(f);
+    m_appid->setFont(f);
+    f.setPixelSize(90);
     m_humidity->setFont(f);
     m_temp->setFont(f);
 }
 
 PrimaryDisplay::~PrimaryDisplay()
 {
+}
+
+void PrimaryDisplay::showEvent(QShowEvent *e)
+{
+    Q_UNUSED(e)
+    qDebug() << "width" << width() << ": height" << height();
 }
 
 //{"photon":{"id":"440018001151373331333230","version":"1.4.4","appid":62},"reset":{"reason":40},"time":{"timezone":-5,"now":1585585745},"network":{"ssid":"Office"},"device":{"AS3935":{}}}

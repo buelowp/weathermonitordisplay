@@ -8,8 +8,7 @@ int main(int argc, char *argv[])
     QApplication app (argc, argv);
     PrimaryDisplay display;
     
-    display.setGeometry(100, 100, 640, 480);
-    display.show();
+    display.showFullScreen();
     return app.exec();
 }
 
