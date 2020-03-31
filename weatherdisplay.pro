@@ -7,3 +7,6 @@ MOC_DIR = .moc
 SOURCES = src/main.cpp src/primarydisplay.cpp
 HEADERS = src/primarydisplay.h
 
+target.path = /usr/bin
+INSTALLS += target
+

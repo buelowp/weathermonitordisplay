@@ -29,15 +29,22 @@ PrimaryDisplay::PrimaryDisplay(QFrame *parent) : QFrame(parent)
 {
     m_humidity = new QLabel();
     m_humidity->setScaledContents(true);
+    m_humidity->setStyleSheet("{color: #FFFFFF}");
     m_temp = new QLabel();
     m_temp->setScaledContents(true);
+    m_temp->setStyleSheet("{color: #FFFFFF}");
     m_lightning = new QLabel();
     m_lightning->setScaledContents(true);
+    m_lightning->setStyleSheet("{color: #FFFFFF}");
     m_noise = new QLabel();
+    m_noise->setStyleSheet("{color: #FFFFFF}");
     m_threshold = new QLabel();
+    m_threshold->setStyleSheet("{color: #FFFFFF}");
     m_ssid = new QLabel();
+    m_ssid->setStyleSheet("{color: #FFFFFF}");
     m_appid = new QLabel();
-    
+    m_appid->setStyleSheet("{color: #FFFFFF}");
+ 
     QLabel *tlabel = new QLabel("Temperature");
     QLabel *hlabel = new QLabel("Humidity");
     
@@ -79,9 +86,17 @@ PrimaryDisplay::PrimaryDisplay(QFrame *parent) : QFrame(parent)
     m_threshold->setFont(f);
     m_ssid->setFont(f);
     m_appid->setFont(f);
-    f.setPixelSize(90);
+    f.setPixelSize(30);
+    m_lightning->setFont(f);
+    f.setPixelSize(100);
     m_humidity->setFont(f);
     m_temp->setFont(f);
+
+    QPalette pal(QColor(0,0,0));
+    setBackgroundRole(QPalette::Window);
+    pal.setColor(QPalette::Window, Qt::black);
+    setAutoFillBackground(true);
+    setPalette(pal);
 }
 
 PrimaryDisplay::~PrimaryDisplay()
@@ -167,7 +182,11 @@ void PrimaryDisplay::displayLightningEvent(QByteArray payload)
         QJsonObject lightning = event["lightning"].toObject();
         
         int distance = lightning["distance"].toInt();
-        QString label = QString("Lightning detected %1 miles away").arg(distance);
+        QString label;
+        if (distance == 1)
+            label = QString("Lightning detected %1 mile away").arg(distance);
+        else
+            label = QString("Lightning detected %1 miles away").arg(distance);
         m_lightning->setText(label);
         m_lightning->show();
         QTimer::singleShot(1000 * 60, this, SLOT(hideLightning()));
