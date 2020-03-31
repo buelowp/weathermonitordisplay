@@ -91,7 +91,6 @@ PrimaryDisplay::~PrimaryDisplay()
 void PrimaryDisplay::showEvent(QShowEvent *e)
 {
     Q_UNUSED(e)
-    qDebug() << "width" << width() << ": height" << height();
 }
 
 //{"photon":{"id":"440018001151373331333230","version":"1.4.4","appid":62},"reset":{"reason":40},"time":{"timezone":-5,"now":1585585745},"network":{"ssid":"Office"},"device":{"AS3935":{}}}
