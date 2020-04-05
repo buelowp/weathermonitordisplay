@@ -82,15 +82,17 @@ PrimaryDisplay::PrimaryDisplay(QFrame *parent) : QFrame(parent)
     m_appid->setFont(f);
     m_rssi->setFont(f);
     m_uptime->setFont(f);
-    f.setPixelSize(90);
+    f.setPixelSize(30);
+    m_lightning->setFont(f);
+    f.setPixelSize(100);
     m_humidity->setFont(f);
     m_temp->setFont(f);
-    
+
     QPalette pal(QColor(0,0,0));
-	setBackgroundRole(QPalette::Window);
-	pal.setColor(QPalette::Window, Qt::black);
-	setAutoFillBackground(true);
-	setPalette(pal);
+    setBackgroundRole(QPalette::Window);
+    pal.setColor(QPalette::Window, Qt::black);
+    setAutoFillBackground(true);
+    setPalette(pal);
 }
 
 PrimaryDisplay::~PrimaryDisplay()
@@ -115,9 +117,6 @@ void PrimaryDisplay::displayStartup(QByteArray payload)
         m_ssid->setText(QString("SSID: ") + network["ssid"].toString());
         m_appid->setText(QString("Version: %1.%2").arg(photon["version"].toString()).arg(photon["appid"].toInt()));
     }
-    
-    msg.setTopic("weather/request/tunables");
-    m_mqttClient->publish(msg);
 }
 
 //{"device":{"AS3935":{"disturbers":"MASKED","indoor":"TRUE","noisefloor":2,"watchdog":2,"spikereject":8,"threshold":5}},"time":{"timezone":-5,"now":1585579482},"network":{"ssid":"Office"},"photon":{"id":"440018001151373331333230","version":"1.4.4","appid":60}}
@@ -174,7 +173,11 @@ void PrimaryDisplay::displayLightningEvent(QByteArray payload)
         QJsonObject lightning = event["lightning"].toObject();
         
         int distance = lightning["distance"].toInt();
-        QString label = QString("Lightning detected %1 miles away").arg(distance);
+        QString label;
+        if (distance == 1)
+            label = QString("Lightning detected %1 mile away").arg(distance);
+        else
+            label = QString("Lightning detected %1 miles away").arg(distance);
         m_lightning->setText(label);
         m_lightning->show();
         QTimer::singleShot(1000 * 60, this, SLOT(hideLightning()));
@@ -211,9 +214,10 @@ void PrimaryDisplay::displayStats(QByteArray payload)
         QJsonObject photon = parent["photon"].toObject();
         
         m_rssi->setText(QString("RSSI: %1").arg(network["signalquality"].toInt()));
+
         QDateTime now = QDateTime::currentDateTime();
         QDateTime started = QDateTime::currentDateTime().addSecs(photon["uptime"].toInt() * -1);
-        qDebug() << __FUNCTION__ << ":" << photon["uptime"].toInt();
+
         int days = started.daysTo(now);
         int seconds = started.secsTo(now);
         int hours = (seconds / 3600) % 24;
@@ -226,10 +230,14 @@ void PrimaryDisplay::connected()
 {
     QMQTT::Message msg;
     qDebug() << __FUNCTION__;
-    msg.setTopic("weather/request/tunables");
     
     m_mqttClient->subscribe("weather/event/#");
     m_mqttClient->subscribe("weather/conditions");
+
+    msg.setTopic("weather/request/tunables");
+    m_mqttClient->publish(msg);
+    QThread::sleep(1);
+    msg.setTopic("weather/request/status");
     m_mqttClient->publish(msg);
 }
 
@@ -254,6 +262,7 @@ void PrimaryDisplay::published(const quint16 msgid, const quint8 qos)
 
 void PrimaryDisplay::received(const QMQTT::Message& message)
 {    
+    qDebug() << __FUNCTION__ << ": Got a message on topic" << message.topic();
     if (message.topic() == "weather/conditions") {
         displayConditions(message.payload());
     }
@@ -269,7 +278,7 @@ void PrimaryDisplay::received(const QMQTT::Message& message)
     else if (message.topic() == "weather/event/startup") {
         displayStartup(message.payload());
     }
-    else if (message.topic() == "weather/event/system") {
+    else if (message.topic() == "weather/event/status") {
         displayStats(message.payload());
     }
     else {
