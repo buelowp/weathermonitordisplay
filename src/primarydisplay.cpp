@@ -278,7 +278,7 @@ void PrimaryDisplay::received(const QMQTT::Message& message)
     else if (message.topic() == "weather/event/startup") {
         displayStartup(message.payload());
     }
-    else if (message.topic() == "weather/event/status") {
+    else if (message.topic() == "weather/event/system") {
         displayStats(message.payload());
     }
     else {
