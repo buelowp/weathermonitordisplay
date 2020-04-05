@@ -107,7 +107,6 @@ void PrimaryDisplay::showEvent(QShowEvent *e)
 //{"photon":{"id":"440018001151373331333230","version":"1.4.4","appid":62},"reset":{"reason":40},"time":{"timezone":-5,"now":1585585745},"network":{"ssid":"Office"},"device":{"AS3935":{}}}
 void PrimaryDisplay::displayStartup(QByteArray payload)
 {
-    QMQTT::Message msg;
     QJsonDocument doc = QJsonDocument::fromJson(payload);
     if (doc.isObject()) {
         QJsonObject parent = doc.object();
@@ -236,9 +235,6 @@ void PrimaryDisplay::connected()
 
     msg.setTopic("weather/request/tunables");
     m_mqttClient->publish(msg);
-    QThread::sleep(1);
-    msg.setTopic("weather/request/status");
-    m_mqttClient->publish(msg);
 }
 
 void PrimaryDisplay::disconnected()
@@ -262,7 +258,6 @@ void PrimaryDisplay::published(const quint16 msgid, const quint8 qos)
 
 void PrimaryDisplay::received(const QMQTT::Message& message)
 {    
-    qDebug() << __FUNCTION__ << ": Got a message on topic" << message.topic();
     if (message.topic() == "weather/conditions") {
         displayConditions(message.payload());
     }
