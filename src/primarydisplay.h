@@ -59,6 +59,7 @@ private:
     void dislplayNoisefloorEvent(QByteArray);
     void displayTunables(QByteArray);
     void displayStartup(QByteArray);
+    void displayStats(QByteArray);
     
     QMQTT::Client *m_mqttClient;
     QGridLayout *m_layout;
@@ -69,6 +70,8 @@ private:
     QLabel *m_threshold;
     QLabel *m_ssid;
     QLabel *m_appid;
+    QLabel *m_rssi;
+    QLabel *m_uptime;
 };
 
 #endif // PRIMARYDISPLAY_H

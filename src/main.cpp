@@ -12,7 +12,9 @@ int main(int argc, char *argv[])
     app.setOverrideCursor(cursor);
     app.changeOverrideCursor(cursor);
     
-    display.showFullScreen();
+    display.setGeometry(100, 100, 800, 480);
+//    display.showFullScreen();
+    display.show();
     return app.exec();
 }
 

@@ -28,15 +28,14 @@
 PrimaryDisplay::PrimaryDisplay(QFrame *parent) : QFrame(parent)
 {
     m_humidity = new QLabel();
-    m_humidity->setScaledContents(true);
     m_temp = new QLabel();
-    m_temp->setScaledContents(true);
     m_lightning = new QLabel();
-    m_lightning->setScaledContents(true);
     m_noise = new QLabel();
     m_threshold = new QLabel();
     m_ssid = new QLabel();
     m_appid = new QLabel();
+    m_rssi = new QLabel();
+    m_uptime = new QLabel();
     
     QLabel *tlabel = new QLabel("Temperature");
     QLabel *hlabel = new QLabel("Humidity");
@@ -51,7 +50,10 @@ PrimaryDisplay::PrimaryDisplay(QFrame *parent) : QFrame(parent)
     m_layout->addWidget(m_threshold, 4, 1, Qt::AlignCenter);
     m_layout->addWidget(m_ssid, 5, 0, Qt::AlignCenter);
     m_layout->addWidget(m_appid, 5, 1, Qt::AlignCenter);
-    
+    m_layout->addWidget(m_rssi, 6, 0, Qt::AlignCenter);
+    m_layout->addWidget(m_uptime, 6, 1, Qt::AlignCenter);
+    m_layout->setContentsMargins(0, 0, 0, 0);
+    m_layout->setSpacing(0);
     setLayout(m_layout);
     
     m_mqttClient = new QMQTT::Client("mqttserver.home", 1883, false, false);
@@ -66,7 +68,6 @@ PrimaryDisplay::PrimaryDisplay(QFrame *parent) : QFrame(parent)
 
     connect(m_mqttClient, SIGNAL(subscribed(const QString&, const quint8)), this, SLOT(subscribed(const QString&, const quint8)));
     connect(m_mqttClient, SIGNAL(unsubscribed(const QString&)), this, SLOT(unsubscribed(const QString&)));
-//    connect(m_mqttClient, SIGNAL(published(const quint16, const quint8)), this, SLOT(published(const quint16, const quint8)));
     connect(m_mqttClient, SIGNAL(pingresp()), this, SLOT(pingresp()));
     connect(m_mqttClient, SIGNAL(received(const QMQTT::Message&)), this, SLOT(received(const QMQTT::Message&)));
     
@@ -79,9 +80,17 @@ PrimaryDisplay::PrimaryDisplay(QFrame *parent) : QFrame(parent)
     m_threshold->setFont(f);
     m_ssid->setFont(f);
     m_appid->setFont(f);
+    m_rssi->setFont(f);
+    m_uptime->setFont(f);
     f.setPixelSize(90);
     m_humidity->setFont(f);
     m_temp->setFont(f);
+    
+    QPalette pal(QColor(0,0,0));
+	setBackgroundRole(QPalette::Window);
+	pal.setColor(QPalette::Window, Qt::black);
+	setAutoFillBackground(true);
+	setPalette(pal);
 }
 
 PrimaryDisplay::~PrimaryDisplay()
@@ -103,8 +112,6 @@ void PrimaryDisplay::displayStartup(QByteArray payload)
         QJsonObject network = parent["network"].toObject();
         QJsonObject photon = parent["photon"].toObject();
         
-        qDebug() << "ssid" << network["ssid"].toString();
-        qDebug() << "appid" << photon["appid"].toInt();
         m_ssid->setText(QString("SSID: ") + network["ssid"].toString());
         m_appid->setText(QString("Version: %1.%2").arg(photon["version"].toString()).arg(photon["appid"].toInt()));
     }
@@ -194,10 +201,31 @@ void PrimaryDisplay::dislplayNoisefloorEvent(QByteArray payload)
     }    
 }
 
+//{"network":{"ssid":"Office","signalquality":-61},"photon":{"freemem":42192,"uptime":313,"appid":77}}
+void PrimaryDisplay::displayStats(QByteArray payload)
+{
+    QJsonDocument doc = QJsonDocument::fromJson(payload);
+    if (doc.isObject()) {
+        QJsonObject parent = doc.object();
+        QJsonObject network = parent["network"].toObject();
+        QJsonObject photon = parent["photon"].toObject();
+        
+        m_rssi->setText(QString("RSSI: %1").arg(network["signalquality"].toInt()));
+        QDateTime now = QDateTime::currentDateTime();
+        QDateTime started = QDateTime::currentDateTime().addSecs(photon["uptime"].toInt() * -1);
+        qDebug() << __FUNCTION__ << ":" << photon["uptime"].toInt();
+        int days = started.daysTo(now);
+        int seconds = started.secsTo(now);
+        int hours = (seconds / 3600) % 24;
+        int minutes = (seconds / 60) % 60;
+        m_uptime->setText(QString("%1 d, %2 h, %3 m").arg(days).arg(hours).arg(minutes));
+    }
+}
+
 void PrimaryDisplay::connected()
 {
     QMQTT::Message msg;
-    
+    qDebug() << __FUNCTION__;
     msg.setTopic("weather/request/tunables");
     
     m_mqttClient->subscribe("weather/event/#");
@@ -240,6 +268,9 @@ void PrimaryDisplay::received(const QMQTT::Message& message)
     }
     else if (message.topic() == "weather/event/startup") {
         displayStartup(message.payload());
+    }
+    else if (message.topic() == "weather/event/system") {
+        displayStats(message.payload());
     }
     else {
         qDebug() << __FUNCTION__ << ": Got a message on topic" << message.topic();
