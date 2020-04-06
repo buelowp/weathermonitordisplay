@@ -73,7 +73,7 @@ PrimaryDisplay::PrimaryDisplay(QFrame *parent) : QFrame(parent)
     
     QFont f = font();
     f.setBold(true);
-    f.setPixelSize(20);
+    f.setPixelSize(30);
     tlabel->setFont(f);
     hlabel->setFont(f);
     m_noise->setFont(f);
@@ -218,10 +218,10 @@ void PrimaryDisplay::displayStats(QByteArray payload)
         QDateTime now = QDateTime::currentDateTime();
         QDateTime started = QDateTime::currentDateTime().addSecs(photon["uptime"].toInt() * -1);
 
-        int days = started.daysTo(now);
         int seconds = started.secsTo(now);
         int hours = (seconds / 3600) % 24;
         int minutes = (seconds / 60) % 60;
+	int days = (seconds / 86400);
         m_uptime->setText(QString("%1 d, %2 h, %3 m").arg(days).arg(hours).arg(minutes));
     }
 }
