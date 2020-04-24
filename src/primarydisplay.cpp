@@ -93,15 +93,62 @@ PrimaryDisplay::PrimaryDisplay(QFrame *parent) : QFrame(parent)
     pal.setColor(QPalette::Window, Qt::black);
     setAutoFillBackground(true);
     setPalette(pal);
+    
+    m_deviceMissing = true;
+    m_eventTimer = new QTimer();
+    connect(m_eventTimer, SIGNAL(timeout()), this, SLOT(missedEvents()));
+    m_eventTimer->setInterval(1000 * 60 * 5);
 }
 
 PrimaryDisplay::~PrimaryDisplay()
 {
 }
 
+void PrimaryDisplay::missedEvents()
+{
+    m_deviceMissing = true;
+}
+
+void PrimaryDisplay::layoutVisible (QGridLayout *layout, bool show)
+{
+    QLayoutItem *item = 0;  
+    QWidget *widget = 0;
+ 
+    for(int i = 0; i < layout->rowCount(); ++i) {
+        for(int j = 0; j < layout->columnCount(); ++j) {
+            item = layout->itemAtPosition(i,j);
+            widget = item ? item->widget() : 0;
+            if (widget)
+                widget->setVisible(show);
+        }
+    }
+}
+
+void PrimaryDisplay::wakeUp()
+{
+    layoutVisible(m_layout, true);
+    QDateTime now = QDateTime::currentDateTime();
+    QTime t(0, 1, 0);
+    QDateTime hideScreen(now.date().addDays(1), t);
+    QTimer::singleShot(now.msecsTo(hideScreen), this, SLOT(goDark()));
+}
+
+void PrimaryDisplay::goDark()
+{
+    layoutVisible(m_layout, false);
+    QDateTime now = QDateTime::currentDateTime();
+    QTime t(5, 0, 0);
+    QDateTime wakeup(now.date(), t);
+    QTimer::singleShot(now.msecsTo(wakeup), this, SLOT(wakeUp()));
+}
+
 void PrimaryDisplay::showEvent(QShowEvent *e)
 {
     Q_UNUSED(e)
+    QDateTime now = QDateTime::currentDateTime();
+    QTime t(0, 1, 0);
+    QDateTime hideScreen(now.date().addDays(1), t);
+    QTimer::singleShot(now.msecsTo(hideScreen), this, SLOT(goDark()));
 }
 
 //{"photon":{"id":"440018001151373331333230","version":"1.4.4","appid":62},"reset":{"reason":40},"time":{"timezone":-5,"now":1585585745},"network":{"ssid":"Office"},"device":{"AS3935":{}}}
@@ -132,7 +179,7 @@ void PrimaryDisplay::displayTunables(QByteArray payload)
         
         m_noise->setText(QString("Noise Floor: %1").arg(AS3935["noisefloor"].toInt()));
         m_threshold->setText(QString("Strike Threshold: %1").arg(AS3935["threshold"].toInt()));
-        m_ssid->setText(QString("SSID: ") + network["ssid"].toString());
+//        m_ssid->setText(QString("SSID: ") + network["ssid"].toString());
         m_appid->setText(QString("Version: %1.%2").arg(photon["version"].toString()).arg(photon["appid"].toInt()));
     }
 }
@@ -153,6 +200,12 @@ void PrimaryDisplay::displayConditions(QByteArray payload)
         double t = values["farenheit"].toDouble();
         double h = values["humidity"].toDouble();
         
+        if (m_deviceMissing) {
+            m_temp->setStyleSheet("QLabel { color : red; }");
+        }
+        else {
+            m_temp->setStyleSheet("QLabel { color : white; }");
+        }
         QString temp = QString("%1%2").arg(t, 0, 'f', 1).arg(QChar(176));
         QString humidity = QString("%1%").arg(h, 0, 'f', 1);
         m_temp->setText(temp);
@@ -213,6 +266,7 @@ void PrimaryDisplay::displayStats(QByteArray payload)
         QJsonObject photon = parent["photon"].toObject();
         
         m_rssi->setText(QString("RSSI: %1").arg(network["signalquality"].toInt()));
+        m_ssid->setText(QString("Memory: %1").arg(photon["freemem"].toInt()));
 
         QDateTime now = QDateTime::currentDateTime();
         QDateTime started = QDateTime::currentDateTime().addSecs(photon["uptime"].toInt() * -1);
@@ -220,7 +274,7 @@ void PrimaryDisplay::displayStats(QByteArray payload)
         int seconds = started.secsTo(now);
         int hours = (seconds / 3600) % 24;
         int minutes = (seconds / 60) % 60;
-	int days = (seconds / 86400);
+        int days = (seconds / 86400);
         m_uptime->setText(QString("%1 d, %2 h, %3 m").arg(days).arg(hours).arg(minutes));
     }
 }
@@ -258,6 +312,10 @@ void PrimaryDisplay::published(const quint16 msgid, const quint8 qos)
 
 void PrimaryDisplay::received(const QMQTT::Message& message)
 {    
+    m_deviceMissing = false;
+    m_eventTimer->stop();
+    m_eventTimer->start();
+    
     if (message.topic() == "weather/conditions") {
         displayConditions(message.payload());
     }

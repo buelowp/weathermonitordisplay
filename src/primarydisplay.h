@@ -52,6 +52,9 @@ public slots:
     
 private slots:
     void hideLightning();
+    void goDark();
+    void wakeUp();
+    void missedEvents();
     
 private:
     void displayConditions(QByteArray);
@@ -60,8 +63,10 @@ private:
     void displayTunables(QByteArray);
     void displayStartup(QByteArray);
     void displayStats(QByteArray);
+    void layoutVisible(QGridLayout*, bool);
     
     QMQTT::Client *m_mqttClient;
+    QTimer *m_eventTimer;
     QGridLayout *m_layout;
     QLabel *m_temp;
     QLabel *m_humidity;
@@ -72,6 +77,7 @@ private:
     QLabel *m_appid;
     QLabel *m_rssi;
     QLabel *m_uptime;
+    bool m_deviceMissing;
 };
 
 #endif // PRIMARYDISPLAY_H
