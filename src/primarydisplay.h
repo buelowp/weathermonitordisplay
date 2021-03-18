@@ -67,11 +67,13 @@ private:
     QLabel *m_humidity;
     QLabel *m_lightning;
     QLabel *m_noise;
-    QLabel *m_threshold;
+    QLabel *m_dewpoint;
     QLabel *m_ssid;
     QLabel *m_appid;
     QLabel *m_rssi;
     QLabel *m_uptime;
+    QLabel *m_rainToday;
+    QLabel *m_rainTotal;
 };
 
 #endif // PRIMARYDISPLAY_H

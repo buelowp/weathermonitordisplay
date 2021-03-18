@@ -31,11 +31,13 @@ PrimaryDisplay::PrimaryDisplay(QFrame *parent) : QFrame(parent)
     m_temp = new QLabel();
     m_lightning = new QLabel();
     m_noise = new QLabel();
-    m_threshold = new QLabel();
+    m_dewpoint = new QLabel();
     m_ssid = new QLabel();
     m_appid = new QLabel();
     m_rssi = new QLabel();
     m_uptime = new QLabel();
+    m_rainToday = new QLabel();
+    m_rainTotal = new QLabel();
     
     QLabel *tlabel = new QLabel("Temperature");
     QLabel *hlabel = new QLabel("Humidity");
@@ -46,17 +48,19 @@ PrimaryDisplay::PrimaryDisplay(QFrame *parent) : QFrame(parent)
     m_layout->addWidget(m_temp, 1, 0, 2, 1, Qt::AlignCenter);
     m_layout->addWidget(m_humidity, 1, 1, 2, 1, Qt::AlignCenter);
     m_layout->addWidget(m_lightning, 3, 0, 1, 2, Qt::AlignCenter);
-    m_layout->addWidget(m_noise, 4, 0, Qt::AlignCenter);
-    m_layout->addWidget(m_threshold, 4, 1, Qt::AlignCenter);
-    m_layout->addWidget(m_ssid, 5, 0, Qt::AlignCenter);
-    m_layout->addWidget(m_appid, 5, 1, Qt::AlignCenter);
-    m_layout->addWidget(m_rssi, 6, 0, Qt::AlignCenter);
-    m_layout->addWidget(m_uptime, 6, 1, Qt::AlignCenter);
+    m_layout->addWidget(m_rainToday, 4, 0, Qt::AlignLeft);
+    m_layout->addWidget(m_rainTotal, 4, 1, Qt::AlignLeft);
+    m_layout->addWidget(m_noise, 5, 0, Qt::AlignLeft);
+    m_layout->addWidget(m_dewpoint, 5, 1, Qt::AlignLeft);
+    m_layout->addWidget(m_ssid, 6, 0, Qt::AlignLeft);
+    m_layout->addWidget(m_appid, 6, 1, Qt::AlignLeft);
+    m_layout->addWidget(m_rssi, 7, 0, Qt::AlignLeft);
+    m_layout->addWidget(m_uptime, 7, 1, Qt::AlignLeft);
     m_layout->setContentsMargins(0, 0, 0, 0);
     m_layout->setSpacing(0);
     setLayout(m_layout);
     
-    m_mqttClient = new QMQTT::Client("mqttserver.home", 1883, false, false);
+    m_mqttClient = new QMQTT::Client("172.24.1.13", 1883, false, false);
     m_mqttClient->setClientId(QHostInfo::localHostName());
     m_mqttClient->connectToHost();
     m_mqttClient->setAutoReconnect(true);
@@ -73,18 +77,20 @@ PrimaryDisplay::PrimaryDisplay(QFrame *parent) : QFrame(parent)
     
     QFont f = font();
     f.setBold(true);
-    f.setPixelSize(30);
+    f.setPixelSize(25);
     tlabel->setFont(f);
     hlabel->setFont(f);
     m_noise->setFont(f);
-    m_threshold->setFont(f);
+    m_dewpoint->setFont(f);
     m_ssid->setFont(f);
     m_appid->setFont(f);
     m_rssi->setFont(f);
     m_uptime->setFont(f);
-    f.setPixelSize(30);
+    m_rainToday->setFont(f);
+    m_rainTotal->setFont(f);
+    f.setPixelSize(25);
     m_lightning->setFont(f);
-    f.setPixelSize(100);
+    f.setPixelSize(85);
     m_humidity->setFont(f);
     m_temp->setFont(f);
 
@@ -131,7 +137,6 @@ void PrimaryDisplay::displayTunables(QByteArray payload)
         QJsonObject photon = parent["photon"].toObject();
         
         m_noise->setText(QString("Noise Floor: %1").arg(AS3935["noisefloor"].toInt()));
-        m_threshold->setText(QString("Strike Threshold: %1").arg(AS3935["threshold"].toInt()));
         m_ssid->setText(QString("SSID: ") + network["ssid"].toString());
         m_appid->setText(QString("Version: %1.%2").arg(photon["version"].toString()).arg(photon["appid"].toInt()));
     }
@@ -152,11 +157,20 @@ void PrimaryDisplay::displayConditions(QByteArray payload)
         
         double t = values["farenheit"].toDouble();
         double h = values["humidity"].toDouble();
+        double rt = values["raintoday"].toDouble();
+        rt = rt * .023;
+        double rain = values["raintotal"].toDouble();
+        rain = rain *.023;
         
         QString temp = QString("%1%2").arg(t, 0, 'f', 1).arg(QChar(176));
         QString humidity = QString("%1%").arg(h, 0, 'f', 1);
+        QString raintoday = QString("Rain Today: %1 in").arg(rt);
+        QString raintotal = QString("Rain YTD: %1 in").arg(rain);
+        m_dewpoint->setText(QString("Dewpoint: %1%2").arg(values["dewpointf"].toDouble(), 0, 'f', 1).arg(QChar(176)));
         m_temp->setText(temp);
         m_humidity->setText(humidity);
+        m_rainToday->setText(raintoday);
+        m_rainTotal->setText(raintotal);
     }
     else {
         qDebug() << __FUNCTION__ << ": Got bad json";
@@ -211,6 +225,7 @@ void PrimaryDisplay::displayStats(QByteArray payload)
         QJsonObject parent = doc.object();
         QJsonObject network = parent["network"].toObject();
         QJsonObject photon = parent["photon"].toObject();
+	QJsonObject device = parent["device"].toObject();
         
         m_rssi->setText(QString("RSSI: %1").arg(network["signalquality"].toInt()));
 
@@ -222,6 +237,9 @@ void PrimaryDisplay::displayStats(QByteArray payload)
         int minutes = (seconds / 60) % 60;
 	int days = (seconds / 86400);
         m_uptime->setText(QString("%1 d, %2 h, %3 m").arg(days).arg(hours).arg(minutes));
+        m_appid->setText(QString("Version: %1.%2").arg(photon["version"].toString()).arg(photon["appid"].toInt()));
+        m_noise->setText(QString("Noise Floor: %1").arg(device["noisefloor"].toInt()));
+        m_ssid->setText(QString("SSID: ") + network["ssid"].toString());
     }
 }
 
@@ -275,9 +293,6 @@ void PrimaryDisplay::received(const QMQTT::Message& message)
     }
     else if (message.topic() == "weather/event/system") {
         displayStats(message.payload());
-    }
-    else {
-        qDebug() << __FUNCTION__ << ": Got a message on topic" << message.topic();
     }
 }
 
